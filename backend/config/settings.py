@@ -17,11 +17,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Third-party
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
-    # Local
     "apps.users",
     "apps.questions",
     "apps.quizzes",
@@ -58,16 +56,39 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "quiz_platform"),
-        "USER": os.getenv("DB_USER", "quiz_user"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "quiz_pass"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+# ── Database ──────────────────────────────────────────────────────────────────
+# Render provides DATABASE_URL; local dev uses individual DB_* vars
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    # Parse postgres://user:pass@host:port/dbname
+    import re
+    m = re.match(
+        r"postgres(?:ql)?://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)", DATABASE_URL
+    )
+    if m:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "USER": m.group(1),
+                "PASSWORD": m.group(2),
+                "HOST": m.group(3),
+                "PORT": m.group(4),
+                "NAME": m.group(5),
+            }
+        }
+    else:
+        raise ValueError(f"Could not parse DATABASE_URL: {DATABASE_URL}")
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "quiz_platform"),
+            "USER": os.getenv("DB_USER", "quiz_user"),
+            "PASSWORD": os.getenv("DB_PASSWORD", "quiz_pass"),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -89,7 +110,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-AUTH_USER_MODEL = "users.User"
+AUTH_USER_MODEL = "users.user"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -100,9 +121,6 @@ REST_FRAMEWORK = {
     ],
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-]
+CORS_ALLOW_ALL_ORIGINS = True   # tightened post-deploy once we have the Vercel URL
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "stub")
